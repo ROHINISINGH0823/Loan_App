@@ -6,7 +6,7 @@ const sendEmail = require('../services/emailService');
 // Get user profile
 exports.getUserProfile = async (req, res) => {
   try {
-    const userId = req.user.id;  
+    const userId = req.user.id;
 
     const user = await User.findById(userId).populate('userProfile');
 
@@ -37,22 +37,25 @@ exports.updateUserProfile = async (req, res) => {
       return res.status(404).json({ status: "error", message: "User not found" });
     }
 
-   
+    // OTP verification for email change
     if (otp) {
       const otpValidationResult = validateOtp(otp, user.otp, user.otp_expiry);
       if (!otpValidationResult.valid) {
         return res.status(400).json({ status: "error", message: otpValidationResult.message });
       }
+
+      // After OTP validation, update the email if provided
+      if (profile && profile.email) {
+        user.userProfile.email = profile.email; // Email can be updated after OTP verification
+      }
     }
 
-    
+    // Update other profile details (name, address, etc.)
     if (profile) {
       user.userProfile.name = profile.name || user.userProfile.name;
       user.userProfile.address = profile.address || user.userProfile.address;
-      user.userProfile.email = profile.email || user.userProfile.email;
     }
 
-   
     await user.userProfile.save();
 
     return res.status(200).json({ status: "success", message: "Profile updated successfully" });
@@ -62,8 +65,7 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
-
-
+// Generate OTP for email change
 exports.generateOtpForEmailChange = async (req, res) => {
   const { mobile_number, email } = req.body;
 
